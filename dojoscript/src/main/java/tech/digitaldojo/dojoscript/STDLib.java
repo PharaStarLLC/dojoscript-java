@@ -40,9 +40,12 @@ package tech.digitaldojo.dojoscript;
 
 import tech.digitaldojo.dojoscript.value.Value;
 
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * dojoscript-java; tech.digitaldojo.dojoscript:STDLib
@@ -59,12 +62,16 @@ public class STDLib {
     /**
      * Adds the functions and variables to the provided {@link DojoScript} instance.
      */
+    @SuppressWarnings("unused")
     public static void init(DojoScript ds) {
 
         // Variables
         ds.set("PI", Math.PI);
+        ds.set("E", Math.E);
         ds.set("time", () -> Value.string(timeFormat.format(new Date())));
         ds.set("date", () -> Value.string(dateFormat.format(new Date())));
+        ds.set("timestamp", () -> Value.string(String.valueOf(new Date().getTime())));
+        ds.set("nanoTimestamp", () -> Value.string(String.valueOf(new Date().toInstant().getNano())));
 
         // Numbers
         ds.set("round", STDLib::round);
@@ -72,6 +79,8 @@ public class STDLib {
         ds.set("floor", STDLib::floor);
         ds.set("ceil", STDLib::ceil);
         ds.set("abs", STDLib::abs);
+        ds.set("min", STDLib::min);
+        ds.set("max", STDLib::max);
         ds.set("random", STDLib::random);
 
         // Strings
@@ -80,8 +89,12 @@ public class STDLib {
         ds.set("toLower", STDLib::toLower);
         ds.set("contains", STDLib::contains);
         ds.set("replace", STDLib::replace);
+        ds.set("trim", STDLib::trim);
         ds.set("pad", STDLib::pad);
 
+        // Checks
+        ds.set("isUrl", STDLib::isUrl);
+        ds.set("isDomain", STDLib::isDomain);
     }
 
     // Numbers
@@ -142,6 +155,24 @@ public class STDLib {
         return Value.number(Math.abs(a));
     }
 
+    public static Value min(DojoScript ds, int argCount) {
+        if (argCount != 2) {
+            ds.error("min() requires 2 arguments, got %d.", argCount);
+        }
+        double a = ds.popNumber("Argument 1 to min() needs to be a number.");
+        double b = ds.popNumber("Argument 2 to min() needs to be a number.");
+        return Value.number(Math.min(a, b));
+    }
+
+    public static Value max(DojoScript ds, int argCount) {
+        if (argCount != 2) {
+            ds.error("max() requires 2 arguments, got %d.", argCount);
+        }
+        double a = ds.popNumber("Argument 1 to max() needs to be a number.");
+        double b = ds.popNumber("Argument 2 to max() needs to be a number.");
+        return Value.number(Math.max(a, b));
+    }
+
     public static Value random(DojoScript ds, int argCount) {
         if (argCount == 0) {
             return Value.number(rand.nextDouble());
@@ -192,6 +223,14 @@ public class STDLib {
         return Value.bool(string.contains(search));
     }
 
+    public static Value trim(DojoScript ds, int argCount) {
+        if (argCount != 1) {
+            ds.error("trim() requires 1 argument, got %d.", argCount);
+        }
+        String a = ds.popString("Argument to trim() needs to be a string.");
+        return Value.string(a.trim());
+    }
+
     public static Value replace(DojoScript ds, int argCount) {
         if (argCount != 3) {
             ds.error("replace() requires 3 arguments, got %d.", argCount);
@@ -205,12 +244,26 @@ public class STDLib {
     }
 
     public static Value pad(DojoScript ds, int argCount) {
-        if (argCount != 2) {
-            ds.error("pad() requires 2 arguments, got %d.", argCount);
+        if (argCount > 3 || argCount < 2) {
+            ds.error("pad() requires 2/3 arguments, got %d.", argCount);
         }
+
 
         int width = (int) ds.popNumber("Second argument to pad() needs to be a number.");
         String text = ds.pop().toString();
+
+        char pad = ' ';
+
+        if (argCount == 3) {
+            String padd = ds.pop().toString();
+            if (padd.length() > 1) {
+                ds.error("pad() can only take a single character as its pad.");
+            }
+            if (padd.equals("")) {
+                padd = " ";
+            }
+            pad = padd.charAt(0);
+        }
 
         if (text.length() >= Math.abs(width)) {
             return Value.string(text);
@@ -221,7 +274,7 @@ public class STDLib {
         if (width >= 0) {
             int padLength = width - text.length();
             for (int i = 0; i < padLength; i++) {
-                padded[i] = ' ';
+                padded[i] = pad;
             }
             for (int i = 0; i < text.length(); i++) {
                 padded[padLength + i] = text.charAt(i);
@@ -231,11 +284,46 @@ public class STDLib {
                 padded[i] = text.charAt(i);
             }
             for (int i = 0; i < Math.abs(width) - text.length(); i++) {
-                padded[text.length() + i] = ' ';
+                padded[text.length() + i] = pad;
             }
         }
 
         return Value.string(new String(padded));
     }
+
+    // Checks
+
+    public static Value isUrl(DojoScript ds, int argCount) {
+        if (argCount != 1) {
+            ds.error("isUrl() requires 1 argument, got %d.", argCount);
+        }
+        String a = ds.popString("Argument to isUrl() needs to be a string.");
+        try {
+            URL url = new URL(a);
+            nothing(url.getAuthority());
+            return Value.bool(true);
+        } catch (Exception e) {
+            nothing();
+        }
+        return Value.bool(false);
+    }
+
+    public static Value isDomain(DojoScript ds, int argCount) {
+        if (argCount != 1) {
+            ds.error("isDomain() requires 1 argument, got %d.", argCount);
+        }
+        String a = ds.popString("Argument to isDomain() needs to be a string.");
+        try {
+            Pattern domainPattern = Pattern.compile("^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}$");
+            Matcher domainMatcher = domainPattern.matcher(a);
+            return Value.bool(domainMatcher.find());
+        } catch (Exception e) {
+            nothing();
+        }
+        return Value.bool(false);
+    }
+
+    private static void nothing() {}
+    private static void nothing(@SuppressWarnings("unused") Object _o) {}
 
 }
