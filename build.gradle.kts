@@ -94,6 +94,47 @@ subprojects {
         }
     }
 
+    if (System.getProperty("publishName") != null && System.getProperty("publishPassword") != null) {
+        publishing {
+            (components["java"] as AdhocComponentWithVariants).withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) {
+                skip()
+            }
+            publications {
+                create<MavenPublication>(project.name) {
+                    from(components["java"])
+                    pom {
+                        name.set(project.name)
+                        url.set("https://github.com/PharaStarLLC/dojoscript-java")
+                        properties.put("inceptionYear", "2022")
+                        licenses {
+                            license {
+                                name.set("MIT License (MIT)")
+                                url.set("https://opensource.org/licenses/MIT")
+                                distribution.set("repo")
+                            }
+                        }
+                        developers {
+                            developer {
+                                id.set("LuciferMorningstarDev")
+                                name.set("Lucifer Morningstar")
+                                email.set("contact@lucifer-morningstar.dev")
+                            }
+                        }
+                    }
+                }
+                repositories {
+                    maven("https://repo.digitaldojo.tech/repository/maven-snapshots/") {
+                        this.name = "digiraldojo-repo"
+                        credentials {
+                            this.password = System.getProperty("publishPassword")
+                            this.username = System.getProperty("publishName")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     tasks {
 
         compileJava {
