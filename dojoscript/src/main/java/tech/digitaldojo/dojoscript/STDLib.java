@@ -245,25 +245,24 @@ public class STDLib {
 
     public static Value pad(DojoScript ds, int argCount) {
         if (argCount > 3 || argCount < 2) {
-            ds.error("pad() requires 2/3 arguments, got %d.", argCount);
+            ds.error("pad() requires 2 or 3 arguments, got %d.", argCount);
         }
-
-
-        int width = (int) ds.popNumber("Second argument to pad() needs to be a number.");
-        String text = ds.pop().toString();
 
         char pad = ' ';
 
         if (argCount == 3) {
-            String padd = ds.pop().toString();
-            if (padd.length() > 1) {
+            String padChar = ds.popString("Third argument to pad() needs to be a string.");
+            if (padChar.length() > 1) {
                 ds.error("pad() can only take a single character as its pad.");
             }
-            if (padd.equals("")) {
-                padd = " ";
+            if (padChar.equals("")) {
+                padChar = " ";
             }
-            pad = padd.charAt(0);
+            pad = padChar.charAt(0);
         }
+
+        int width = (int) ds.popNumber("Second argument to pad() needs to be a number.");
+        String text = ds.pop().toString();
 
         if (text.length() >= Math.abs(width)) {
             return Value.string(text);
@@ -288,7 +287,7 @@ public class STDLib {
             }
         }
 
-        return Value.string(new String(padded));
+        return Value.string(String.valueOf(padded));
     }
 
     // Checks

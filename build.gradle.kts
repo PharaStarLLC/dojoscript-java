@@ -75,8 +75,8 @@ subprojects {
 
     java {
         toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-        //withSourcesJar()
-        //withJavadocJar()
+        withSourcesJar()
+        withJavadocJar()
     }
 
     val javaComponent = components["java"] as AdhocComponentWithVariants
